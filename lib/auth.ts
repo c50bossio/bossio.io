@@ -5,7 +5,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
 export const auth = betterAuth({
-  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
+  trustedOrigins: [
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    "https://bossio.io",
+    "https://www.bossio.io"
+  ],
   allowedDevOrigins: ["http://localhost:3000"],
   
   database: drizzleAdapter(db, {
