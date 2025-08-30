@@ -147,7 +147,7 @@ export default function PublicBookingPage() {
           shopId: shop?.id,
           serviceId: selectedService?.id,
           barberId: selectedBarber?.id,
-          startTime: selectedDateTime,
+          startTime: selectedDateTime?.toISOString(),
           duration: selectedService?.duration,
           clientName: guestData.name,
           clientEmail: guestData.email,
