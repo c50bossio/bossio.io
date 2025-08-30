@@ -226,8 +226,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      appointment,
-      hasConflicts,
+      appointment: createdAppointment,
+      hasConflicts: false,
       confirmations: {
         email: {
           sent: emailSent,
@@ -243,9 +243,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating appointment:', error);
-    return NextResponse.json(
-      { error: 'Failed to create appointment' },
-      { status: 500 }
-    );
+    // Return more detailed error in development
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorDetails = process.env.NODE_ENV === 'development' 
+      ? { error: 'Failed to create appointment', details: errorMessage, stack: error?.stack }
+      : { error: 'Failed to create appointment', message: errorMessage };
+    
+    return NextResponse.json(errorDetails, { status: 500 });
   }
 }
