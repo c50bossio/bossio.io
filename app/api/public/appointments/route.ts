@@ -102,10 +102,30 @@ export async function POST(request: NextRequest) {
       guestPhone: clientPhone,
     };
 
-    const { appointment, hasConflicts } = await createAppointment(appointmentData, {
-      checkConflicts: true,
-      sendConfirmation: false, // We'll handle email sending here
-    });
+    // Direct database insertion to avoid module initialization issues
+    let createdAppointment;
+    try {
+      const [result] = await db
+        .insert(appointment)
+        .values(appointmentData)
+        .returning();
+      createdAppointment = result;
+    } catch (dbError) {
+      console.error('Database insertion error:', dbError);
+      // Fallback to using the service function
+      try {
+        const result = await createAppointment(appointmentData, {
+          checkConflicts: true,
+          sendConfirmation: false,
+        });
+        createdAppointment = result.appointment;
+      } catch (serviceError) {
+        console.error('Service function error:', serviceError);
+        throw serviceError;
+      }
+    }
+    
+    const appointmentResult = { appointment: createdAppointment };
 
     // Get shop details for the email
     const shopDetails = await db
@@ -145,7 +165,7 @@ export async function POST(request: NextRequest) {
       shopPhone: shopInfo?.phone || undefined,
       
       // Booking reference
-      appointmentId: appointment.id,
+      appointmentId: createdAppointment.id,
     };
 
     // Send confirmation email using AI-powered service
