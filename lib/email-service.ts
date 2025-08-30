@@ -93,60 +93,79 @@ The text should be clean plain text version.`,
 }
 
 /**
- * Send email using a service provider (placeholder for actual email service)
- * In production, you'd integrate with services like:
- * - Resend (resend.com) - Modern email API
- * - SendGrid - Enterprise email service
- * - Amazon SES - AWS email service
- * - Mailgun - Developer-friendly email API
+ * Send email using SendGrid service
  */
 export async function sendBookingConfirmationEmail(
   emailTemplate: EmailTemplate,
   recipientEmail: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   
-  // TODO: Replace with actual email service integration
-  // For now, we'll log the email content and return success
-  
-  console.log('📧 BOOKING CONFIRMATION EMAIL');
-  console.log('============================');
-  console.log(`To: ${recipientEmail}`);
-  console.log(`Subject: ${emailTemplate.subject}`);
-  console.log('\n--- HTML Content ---');
-  console.log(emailTemplate.htmlContent);
-  console.log('\n--- Text Content ---');
-  console.log(emailTemplate.textContent);
-  console.log('============================');
-  
-  // Simulate email sending success
-  return {
-    success: true,
-    messageId: `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-  };
-
-  /* 
-  // Example integration with Resend (uncomment when ready to use real email service):
-  
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    
-    const { data, error } = await resend.emails.send({
-      from: `${process.env.SHOP_NAME || 'Barbershop'} <noreply@yourdomain.com>`,
-      to: recipientEmail,
-      subject: emailTemplate.subject,
-      html: emailTemplate.htmlContent,
-      text: emailTemplate.textContent,
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
+    // Check if we have SendGrid credentials
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) {
+      console.log('📧 EMAIL NOTIFICATION (Development Mode)');
+      console.log('============================');
+      console.log(`To: ${recipientEmail}`);
+      console.log(`Subject: ${emailTemplate.subject}`);
+      console.log('\n--- HTML Content ---');
+      console.log(emailTemplate.htmlContent);
+      console.log('\n--- Text Content ---');
+      console.log(emailTemplate.textContent);
+      console.log('============================');
+      console.log('⚠️ SendGrid credentials not found - simulating success');
+      
+      return {
+        success: true,
+        messageId: `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      };
     }
 
-    return { success: true, messageId: data?.id };
-  } catch (error) {
-    return { success: false, error: error.message };
+    // Production SendGrid Integration
+    const sgMail = await import('@sendgrid/mail');
+    sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+
+    const msg = {
+      to: recipientEmail,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'BookedBarber',
+      },
+      subject: emailTemplate.subject,
+      text: emailTemplate.textContent,
+      html: emailTemplate.htmlContent,
+    };
+
+    console.log('📧 Sending email via SendGrid...');
+    console.log(`To: ${recipientEmail}`);
+    console.log(`From: ${process.env.SENDGRID_FROM_EMAIL}`);
+    console.log(`Subject: ${emailTemplate.subject}`);
+
+    const [response] = await sgMail.default.send(msg);
+
+    console.log(`✅ Email sent successfully! Status: ${response.statusCode}`);
+
+    return {
+      success: true,
+      messageId: response.headers['x-message-id'] || 'sendgrid_' + Date.now(),
+    };
+
+  } catch (error: any) {
+    console.error('SendGrid email error:', error);
+    
+    // Handle SendGrid specific errors
+    if (error.response) {
+      console.error('SendGrid error response:', error.response.body);
+      return {
+        success: false,
+        error: `SendGrid error: ${error.response.body?.errors?.[0]?.message || error.message}`,
+      };
+    }
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Email service failed',
+    };
   }
-  */
 }
 
 /**

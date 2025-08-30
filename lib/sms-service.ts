@@ -95,27 +95,32 @@ export class SMSService {
     appointmentId: string
   ): Promise<SMSResponse> {
     try {
-      // For now, log the SMS content (replace with actual Twilio integration)
-      console.log('📱 SMS NOTIFICATION (Twilio)');
-      console.log('================================');
-      console.log(`To: ${phoneNumber}`);
-      console.log(`Message: ${message}`);
-      console.log(`Appointment ID: ${appointmentId}`);
-      console.log('================================');
+      // Check if we have Twilio credentials
+      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+        console.log('📱 SMS NOTIFICATION (Twilio - Development Mode)');
+        console.log('================================');
+        console.log(`To: ${phoneNumber}`);
+        console.log(`Message: ${message}`);
+        console.log(`Appointment ID: ${appointmentId}`);
+        console.log('================================');
+        console.log('⚠️ Twilio credentials not found - simulating success');
 
-      // Simulate successful SMS sending
-      return {
-        success: true,
-        messageId: `twilio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      };
+        return {
+          success: true,
+          messageId: `twilio_dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+      }
 
-      /* Production Twilio Integration (uncomment when ready):
-      
-      const twilio = require('twilio');
-      const client = twilio(
+      // Production Twilio Integration
+      const twilio = await import('twilio');
+      const client = twilio.default(
         process.env.TWILIO_ACCOUNT_SID, 
         process.env.TWILIO_AUTH_TOKEN
       );
+
+      console.log('📱 Sending SMS via Twilio...');
+      console.log(`To: ${phoneNumber}`);
+      console.log(`From: ${process.env.TWILIO_PHONE_NUMBER}`);
 
       const result = await client.messages.create({
         body: message,
@@ -123,11 +128,12 @@ export class SMSService {
         to: phoneNumber,
       });
 
+      console.log(`✅ SMS sent successfully! SID: ${result.sid}`);
+
       return {
         success: true,
         messageId: result.sid,
       };
-      */
 
     } catch (error) {
       console.error('Twilio SMS error:', error);
@@ -237,6 +243,14 @@ Ref: ${bookingData.appointmentId.slice(0, 8)}`;
     // Handle other international formats
     if (cleaned.length > 11) {
       return `+${cleaned}`;
+    }
+    
+    // If already starts with +, just clean and return
+    if (phone.startsWith('+')) {
+      const plusCleaned = phone.replace(/[^\d+]/g, '');
+      if (plusCleaned.length >= 11) {
+        return plusCleaned;
+      }
     }
     
     // Invalid format
