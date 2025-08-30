@@ -8,7 +8,9 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     "https://bossio.io",
-    "https://www.bossio.io"
+    "https://www.bossio.io",
+    "https://bossioio.vercel.app",
+    "https://*.vercel.app"
   ],
   allowedDevOrigins: ["http://localhost:3000"],
   
