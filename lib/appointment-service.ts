@@ -97,9 +97,12 @@ export async function createAppointment(
     throw new Error('Database connection not available');
   }
   
+  // Import appointment table inline to avoid initialization issues
+  const { appointment: appointmentTable } = await import('./shop-schema');
+  
   console.log('Inserting appointment with values:', appointmentValues);
   const [createdAppointment] = await db
-    .insert(appointment)
+    .insert(appointmentTable)
     .values(appointmentValues)
     .returning();
 
@@ -202,22 +205,25 @@ export async function checkAppointmentConflicts(
   shopId: string,
   excludeAppointmentId?: string
 ): Promise<any[]> {
+  // Import appointment table inline to avoid initialization issues
+  const { appointment: appointmentTable } = await import('./shop-schema');
+  
   let whereConditions = [
-    eq(appointment.shopId, shopId),
-    eq(appointment.barberId, barberId),
+    eq(appointmentTable.shopId, shopId),
+    eq(appointmentTable.barberId, barberId),
     // Check for time overlap: appointments that conflict with the requested time slot
     sql`(
-      (${appointment.startTime} < ${endTime} AND ${appointment.endTime} > ${startTime})
+      (${appointmentTable.startTime} < ${endTime} AND ${appointmentTable.endTime} > ${startTime})
     )`
   ];
 
   if (excludeAppointmentId) {
-    whereConditions.push(sql`${appointment.id} != ${excludeAppointmentId}`);
+    whereConditions.push(sql`${appointmentTable.id} != ${excludeAppointmentId}`);
   }
 
   const conflicts = await db
     .select()
-    .from(appointment)
+    .from(appointmentTable)
     .where(and(...whereConditions));
 
   return conflicts;
@@ -232,6 +238,9 @@ export async function getAvailableSlots(
   date: Date,
   serviceDuration: number = 30
 ): Promise<BookingSlot[]> {
+  // Import appointment table inline to avoid initialization issues
+  const { appointment: appointmentTable } = await import('./shop-schema');
+  
   // Get business hours (simplified - assumes 9 AM to 6 PM)
   const dayStart = new Date(date);
   dayStart.setHours(9, 0, 0, 0);
@@ -242,16 +251,16 @@ export async function getAvailableSlots(
   // Get existing appointments for the day
   const existingAppointments = await db
     .select()
-    .from(appointment)
+    .from(appointmentTable)
     .where(
       and(
-        eq(appointment.shopId, shopId),
-        eq(appointment.barberId, barberId),
-        gte(appointment.startTime, dayStart),
-        lte(appointment.startTime, dayEnd)
+        eq(appointmentTable.shopId, shopId),
+        eq(appointmentTable.barberId, barberId),
+        gte(appointmentTable.startTime, dayStart),
+        lte(appointmentTable.startTime, dayEnd)
       )
     )
-    .orderBy(appointment.startTime);
+    .orderBy(appointmentTable.startTime);
 
   const slots: BookingSlot[] = [];
   const slotDuration = serviceDuration * 60 * 1000; // Convert to milliseconds
@@ -294,13 +303,16 @@ export async function updateAppointmentStatus(
 ): Promise<any> {
   const { updateAnalytics = true, sendNotification = true } = options;
 
+  // Import appointment table inline to avoid initialization issues
+  const { appointment: appointmentTable } = await import('./shop-schema');
+
   const [updatedAppointment] = await db
-    .update(appointment)
+    .update(appointmentTable)
     .set({ 
       status: status as any,
       updatedAt: new Date()
     })
-    .where(eq(appointment.id, appointmentId))
+    .where(eq(appointmentTable.id, appointmentId))
     .returning();
 
   // Handle completion - update client stats and analytics
