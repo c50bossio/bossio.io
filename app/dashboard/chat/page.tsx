@@ -9,11 +9,24 @@ import Markdown from "react-markdown";
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat({
     maxSteps: 10,
+    initialMessages: [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: 'Hello! I\'m your AI Business Coach. I can help you with business strategy, revenue optimization, customer retention, and operational efficiency. What would you like to discuss?'
+      }
+    ]
   });
 
   return (
-    <div className="flex flex-col w-full py-24 justify-center items-center">
-      <div className="w-full max-w-xl space-y-4 mb-20">
+    <div className="flex flex-col w-full h-full">
+      <div className="border-b px-6 py-4">
+        <h1 className="text-2xl font-semibold tracking-tight">AI Business Coach</h1>
+        <p className="text-muted-foreground">Get intelligent insights and recommendations to grow your business</p>
+      </div>
+      
+      <div className="flex flex-col w-full flex-1 justify-start items-center overflow-y-auto">
+        <div className="w-full max-w-4xl space-y-4 p-6 mb-20">
         {messages.map((message, i) => (
           <div
             key={message.id}
@@ -48,26 +61,29 @@ export default function Chat() {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
-      <form
-        className="flex gap-2 justify-center w-full items-center fixed bottom-0"
-        onSubmit={handleSubmit}
-      >
-        <div className="flex flex-col gap-2 justify-center items-start mb-8 max-w-xl w-full border p-2 rounded-lg bg-white ">
-          <Input
-            className="w-full border-0 shadow-none !ring-transparent "
-            value={input}
-            placeholder="Say something..."
-            onChange={handleInputChange}
-          />
-          <div className="flex justify-end gap-3 items-center w-full">
-            <Button size="sm" className="text-xs">
-              Send
-            </Button>
+      <div className="border-t p-4">
+        <form
+          className="flex gap-2 justify-center w-full items-center max-w-4xl mx-auto"
+          onSubmit={handleSubmit}
+        >
+          <div className="flex flex-col gap-2 justify-center items-start w-full border p-2 rounded-lg bg-white">
+            <Input
+              className="w-full border-0 shadow-none !ring-transparent"
+              value={input}
+              placeholder="Ask me about your business strategy, revenue optimization, or growth opportunities..."
+              onChange={handleInputChange}
+            />
+            <div className="flex justify-end gap-3 items-center w-full">
+              <Button size="sm" className="text-xs">
+                Send
+              </Button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

@@ -1,17 +1,25 @@
 import FooterSection from "@/components/homepage/footer";
 import HeroSection from "@/components/homepage/hero-section";
 import Integrations from "@/components/homepage/integrations";
-import { getSubscriptionDetails } from "@/lib/subscription";
-import PricingTable from "./pricing/_component/pricing-table";
+import EnhancedPricing from "@/components/enhanced-pricing";
 
-export default async function Home() {
-  const subscriptionDetails = await getSubscriptionDetails();
+export default function Home() {
+  // Default values for build time - will be dynamic in production
+  const userTier = 'free' as const;
+  const currentUsage = {
+    aiTokens: 0,
+    smsMessages: 0,
+    monthlyCost: 0
+  };
 
   return (
     <>
       <HeroSection />
       <Integrations />
-      <PricingTable subscriptionDetails={subscriptionDetails} />
+      <EnhancedPricing 
+        userTier={userTier}
+        currentUsage={currentUsage}
+      />
       <FooterSection />
     </>
   );

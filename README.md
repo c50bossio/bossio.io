@@ -1,6 +1,6 @@
-# Next.js SaaS Starter Kit 2.0
+# Bossio.io - AI-Powered Business Management Platform
 
-A comprehensive, production-ready SaaS starter kit built with Next.js 15, featuring authentication, subscriptions, AI integration, and modern UI components.
+A comprehensive, AI-powered business management platform built with Next.js 15, featuring intelligent business coaching, multi-AI providers, analytics, and modern UI components.
 
 ## ✨ Features
 

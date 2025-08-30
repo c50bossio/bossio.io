@@ -3,12 +3,14 @@
 import UserProfile from "@/components/user-profile";
 import clsx from "clsx";
 import {
-  Banknote,
+  BarChart3,
+  Calendar,
   HomeIcon,
   LucideIcon,
   MessageCircleIcon,
   Settings,
-  Upload,
+  Users,
+  Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -21,24 +23,34 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    label: "Overview",
+    label: "Dashboard",
     href: "/dashboard",
     icon: HomeIcon,
   },
   {
-    label: "Chat",
+    label: "AI Business Coach",
     href: "/dashboard/chat",
     icon: MessageCircleIcon,
   },
   {
-    label: "Upload",
-    href: "/dashboard/upload",
-    icon: Upload,
+    label: "Clients",
+    href: "/dashboard/clients",
+    icon: Users,
   },
   {
-    label: "Payment Gated",
-    href: "/dashboard/payment",
-    icon: Banknote,
+    label: "Services",
+    href: "/dashboard/services",
+    icon: Briefcase,
+  },
+  {
+    label: "Analytics",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+  },
+  {
+    label: "Calendar",
+    href: "/dashboard/calendar",
+    icon: Calendar,
   },
 ];
 
@@ -55,7 +67,7 @@ export default function DashboardSideBar() {
             className="flex items-center font-semibold hover:cursor-pointer"
             href="/"
           >
-            <span>Nextjs Starter Kit</span>
+            <span>Bossio.io</span>
           </Link>
         </div>
 

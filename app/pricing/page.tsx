@@ -1,12 +1,20 @@
-import { getSubscriptionDetails } from "@/lib/subscription";
-import PricingTable from "./_component/pricing-table";
+import EnhancedPricing from "@/components/enhanced-pricing";
 
-export default async function PricingPage() {
-  const subscriptionDetails = await getSubscriptionDetails();
+export default function PricingPage() {
+  // Default values for build time - will be dynamic in production
+  const userTier = 'free' as const;
+  const currentUsage = {
+    aiTokens: 0,
+    smsMessages: 0,
+    monthlyCost: 0
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full min-h-screen">
-      <PricingTable subscriptionDetails={subscriptionDetails} />;
+    <div className="min-h-screen bg-background">
+      <EnhancedPricing 
+        userTier={userTier}
+        currentUsage={currentUsage}
+      />
     </div>
   );
 }

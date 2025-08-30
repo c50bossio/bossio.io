@@ -7,13 +7,12 @@ export default function HeroSection() {
     <section className="py-20">
       <div className="relative z-10 mx-auto w-full max-w-2xl px-6 lg:px-0">
         <div className="relative text-center">
-          <p className="text-3xl">🔥</p>
+          <p className="text-3xl">🚀</p>
           <h1 className="mx-auto mt-12 max-w-xl text-balance text-5xl font-medium">
-            Nextjs Starter Kit
+            Build Your Business Empire, Not Someone Else&apos;s
           </h1>
           <p className="text-muted-foreground mx-auto mb-6 mt-4 text-balance text-xl">
-            This powerful starter kit is designed to help you launch your SAAS
-            application quickly and efficiently.
+            AI-powered business intelligence platform that transforms your operations into a data-driven empire with intelligent coaching and automation.
           </p>
           <div className="flex flex-col items-center gap-2 *:w-full sm:flex-row sm:justify-center sm:*:w-auto">
             <Button asChild variant="default" size="sm">
@@ -23,11 +22,10 @@ export default function HeroSection() {
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link
-                href="https://github.com/michaelshimeles/nextjs-starter-kit"
-                target="_blank"
-                rel="noreferrer"
+                href="/pricing"
+                prefetch={true}
               >
-                <span className="text-nowrap">Github</span>
+                <span className="text-nowrap">View Pricing</span>
               </Link>
             </Button>
           </div>

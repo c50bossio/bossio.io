@@ -112,80 +112,144 @@ export default function PricingTable({
     <section className="flex flex-col items-center justify-center px-4 mb-24 w-full">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-medium tracking-tight mb-4">
-          Fake Subscription
+          Insights Free, Agents Paid
         </h1>
         <p className="text-xl text-muted-foreground">
-          Test out this starter kit using this fake subscription.
+          Get complete business intelligence for free. Pay only for AI coaching that grows your business.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-4xl w-full">
-        {/* Starter Tier */}
+      <div className="grid md:grid-cols-3 gap-8 max-w-6xl w-full">
+        {/* Free Tier */}
         <Card className="relative h-fit">
-          {isCurrentPlan(STARTER_TIER) && (
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-800"
-              >
-                Current Plan
-              </Badge>
-            </div>
-          )}
           <CardHeader>
-            <CardTitle className="text-2xl">Starter</CardTitle>
-            <CardDescription>Perfect for getting started</CardDescription>
+            <CardTitle className="text-2xl">Insights Free</CardTitle>
+            <CardDescription>Complete business intelligence at no cost</CardDescription>
             <div className="mt-4">
-              <span className="text-4xl font-bold">$1,000</span>
-              <span className="text-muted-foreground">/month</span>
+              <span className="text-4xl font-bold">$0</span>
+              <span className="text-muted-foreground">/forever</span>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>5 Projects</span>
+              <span>Business Intelligence Dashboard</span>
             </div>
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>10GB Storage</span>
+              <span>Service & Client Management</span>
             </div>
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>1 Team Member</span>
+              <span>Analytics & Reporting</span>
             </div>
             <div className="flex items-center gap-3">
               <Check className="h-5 w-5 text-green-500" />
-              <span>Email Support</span>
+              <span>Calendar Integration</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Basic Notifications</span>
             </div>
           </CardContent>
           <CardFooter>
-            {isCurrentPlan(STARTER_TIER) ? (
-              <div className="w-full space-y-2">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={handleManageSubscription}
-                >
-                  Manage Subscription
-                </Button>
-                {subscriptionDetails.subscription && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    {subscriptionDetails.subscription.cancelAtPeriodEnd
-                      ? `Expires ${formatDate(subscriptionDetails.subscription.currentPeriodEnd)}`
-                      : `Renews ${formatDate(subscriptionDetails.subscription.currentPeriodEnd)}`}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <Button
-                className="w-full"
-                onClick={() => handleCheckout(STARTER_TIER, STARTER_SLUG)}
-              >
-                {isAuthenticated === false
-                  ? "Sign In to Get Started"
-                  : "Get Started"}
-              </Button>
-            )}
+            <Button
+              className="w-full"
+              variant="outline"
+            >
+              Always Free
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* AI Agents Paid */}
+        <Card className="relative h-fit border-primary">
+          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+            <Badge className="bg-primary text-primary-foreground">
+              Most Popular
+            </Badge>
+          </div>
+          <CardHeader>
+            <CardTitle className="text-2xl">AI Agents</CardTitle>
+            <CardDescription>Pay-as-you-grow AI business coaching</CardDescription>
+            <div className="mt-4">
+              <span className="text-4xl font-bold">$0.04</span>
+              <span className="text-muted-foreground">/1K tokens</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Everything in Free</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>AI Business Coaching</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Smart Recommendations</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Predictive Analytics</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>SMS Notifications ($0.01/msg)</span>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button
+              className="w-full"
+              onClick={() => router.push("/dashboard")}
+            >
+              {isAuthenticated === false
+                ? "Sign In to Launch Agents"
+                : "Launch AI Agents"}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Enterprise */}
+        <Card className="relative h-fit">
+          <CardHeader>
+            <CardTitle className="text-2xl">Enterprise</CardTitle>
+            <CardDescription>Multi-location business management</CardDescription>
+            <div className="mt-4">
+              <span className="text-4xl font-bold">Custom</span>
+              <span className="text-muted-foreground">/pricing</span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Everything in AI Agents</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Multi-Location Management</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Advanced Integrations</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Priority Support</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-500" />
+              <span>Custom Features</span>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button
+              className="w-full"
+              variant="outline"
+            >
+              Contact Sales
+            </Button>
           </CardFooter>
         </Card>
       </div>
