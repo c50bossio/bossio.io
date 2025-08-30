@@ -6,14 +6,15 @@ import { eq } from 'drizzle-orm';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { shopSlug: string } }
+  { params }: { params: Promise<{ shopSlug: string }> }
 ) {
   try {
+    const { shopSlug } = await params;
     // First get the shop by slug
     const shops = await db
       .select()
       .from(shop)
-      .where(eq(shop.slug, params.shopSlug))
+      .where(eq(shop.slug, shopSlug))
       .limit(1);
 
     if (!shops.length) {

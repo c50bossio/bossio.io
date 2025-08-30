@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
 import { createAppointment } from '@/lib/appointment-service';
-import { service, shop } from '@/lib/shop-schema';
-import { eq } from 'drizzle-orm';
+import { service, shop, appointment } from '@/lib/shop-schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { sendBookingConfirmation } from '@/lib/email-service';
 import { sendBookingConfirmationSMS } from '@/lib/sms-service';
 
@@ -48,6 +48,40 @@ export async function POST(request: NextRequest) {
     // Calculate end time
     const startDateTime = new Date(startTime);
     const endDateTime = new Date(startDateTime.getTime() + (duration * 60 * 1000));
+
+    // Final availability check to prevent double booking
+    if (barberId) {
+      const conflicts = await db
+        .select()
+        .from(appointment)
+        .where(
+          and(
+            eq(appointment.shopId, shopId),
+            eq(appointment.barberId, barberId),
+            // Check for time overlap
+            sql`(
+              (${appointment.startTime} < ${endDateTime.toISOString()} AND ${appointment.endTime} > ${startDateTime.toISOString()})
+            )`,
+            // Only check active appointments
+            sql`${appointment.status} IN ('scheduled', 'confirmed')`
+          )
+        );
+
+      if (conflicts.length > 0) {
+        return NextResponse.json(
+          { 
+            error: 'Time slot no longer available',
+            message: 'This time slot has been booked by another customer. Please select a different time.',
+            conflictDetails: {
+              conflictingAppointment: conflicts[0].id,
+              requestedTime: startTime,
+              conflictTime: conflicts[0].startTime
+            }
+          },
+          { status: 409 } // Conflict status code
+        );
+      }
+    }
 
     // Create appointment with guest information
     const appointmentData = {
@@ -119,16 +153,19 @@ export async function POST(request: NextRequest) {
     let emailError = null;
     
     try {
+      console.log('Attempting to send email confirmation...');
       const emailResult = await sendBookingConfirmation(bookingData);
 
       emailSent = emailResult.success;
       if (!emailResult.success) {
         emailError = emailResult.error;
         console.error('Email sending failed:', emailResult.error);
+      } else {
+        console.log('Email sent successfully');
       }
     } catch (error) {
       console.error('Email service error:', error);
-      emailError = 'Email service unavailable';
+      emailError = error instanceof Error ? error.message : 'Email service unavailable';
     }
 
     // Send confirmation SMS if phone number is provided
@@ -137,16 +174,19 @@ export async function POST(request: NextRequest) {
 
     if (clientPhone) {
       try {
+        console.log('Attempting to send SMS confirmation...');
         const smsResult = await sendBookingConfirmationSMS(bookingData);
         
         smsSent = smsResult.success;
         if (!smsResult.success) {
           smsError = smsResult.error;
           console.error('SMS sending failed:', smsResult.error);
+        } else {
+          console.log('SMS sent successfully');
         }
       } catch (error) {
         console.error('SMS service error:', error);
-        smsError = 'SMS service unavailable';
+        smsError = error instanceof Error ? error.message : 'SMS service unavailable';
       }
     }
 

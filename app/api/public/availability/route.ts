@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
+import { appointment } from '@/lib/shop-schema';
 import { format, addMinutes, startOfDay, endOfDay } from 'date-fns';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,8 +24,40 @@ export async function GET(request: NextRequest) {
     const dayStart = startOfDay(selectedDate);
     const dayEnd = endOfDay(selectedDate);
 
-    // TODO: Get existing appointments from database
-    // For now, we'll generate mock availability
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    // Get existing appointments for the day and barber (if specified)
+    let appointmentQuery = db
+      .select()
+      .from(appointment)
+      .where(
+        and(
+          eq(appointment.shopId, shopId),
+          gte(appointment.startTime, dayStart),
+          lte(appointment.startTime, dayEnd),
+          // Only include scheduled and confirmed appointments
+          sql`${appointment.status} IN ('scheduled', 'confirmed')`
+        )
+      );
+
+    // If specific barber requested, filter by barber
+    if (barberId && barberId !== 'null') {
+      appointmentQuery = appointmentQuery.where(
+        and(
+          eq(appointment.shopId, shopId),
+          eq(appointment.barberId, barberId),
+          gte(appointment.startTime, dayStart),
+          lte(appointment.startTime, dayEnd),
+          sql`${appointment.status} IN ('scheduled', 'confirmed')`
+        )
+      );
+    }
+
+    const existingAppointments = await appointmentQuery;
+
+    console.log(`Found ${existingAppointments.length} existing appointments for ${date} (barber: ${barberId})`);
 
     // Generate time slots based on business hours
     const slots = [];
@@ -52,13 +86,22 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Mock availability (70% available)
-        // In production, check against existing appointments
-        const available = Math.random() > 0.3;
+        // Check for conflicts with existing appointments
+        const hasConflict = existingAppointments.some(appt => {
+          const apptStart = new Date(appt.startTime);
+          const apptEnd = new Date(appt.endTime);
+          
+          // Check if the slot overlaps with an existing appointment
+          return (
+            (slotTime < apptEnd && slotEnd > apptStart) ||
+            // Also check if specific barber conflict (for "any barber" bookings)
+            (barberId === null && appt.barberId !== null)
+          );
+        });
 
         slots.push({
           time: slotTime,
-          available,
+          available: !hasConflict,
           barberId: barberId || null
         });
       }

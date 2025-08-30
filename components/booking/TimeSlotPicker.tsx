@@ -16,6 +16,7 @@ interface TimeSlotPickerProps {
   serviceId: string;
   serviceDuration: number;
   onSelect: (dateTime: Date) => void;
+  refreshTrigger?: number; // Add trigger to force refresh
 }
 
 export default function TimeSlotPicker({
@@ -23,7 +24,8 @@ export default function TimeSlotPicker({
   barberId,
   serviceId,
   serviceDuration,
-  onSelect
+  onSelect,
+  refreshTrigger
 }: TimeSlotPickerProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -34,51 +36,41 @@ export default function TimeSlotPicker({
 
   useEffect(() => {
     loadTimeSlots();
-  }, [selectedDate, barberId]);
+  }, [selectedDate, barberId, refreshTrigger]);
 
   const loadTimeSlots = async () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/public/availability?shopId=${shopId}&barberId=${barberId}&date=${format(selectedDate, 'yyyy-MM-dd')}&duration=${serviceDuration}`
+        `/api/public/availability?shopId=${shopId}&barberId=${barberId}&date=${format(selectedDate, 'yyyy-MM-dd')}&duration=${serviceDuration}`,
+        { 
+          // Prevent caching to ensure fresh availability data
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        }
       );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch availability: ${response.status}`);
+      }
+      
       const data = await response.json();
-      setTimeSlots(data.slots || generateDefaultSlots());
+      console.log('Loaded time slots:', data.slots?.length || 0, 'slots for', format(selectedDate, 'yyyy-MM-dd'));
+      setTimeSlots(data.slots || []);
     } catch (error) {
       console.error('Error loading time slots:', error);
-      setTimeSlots(generateDefaultSlots());
+      // Don't fallback to mock data - show empty state instead
+      setTimeSlots([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateDefaultSlots = (): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    const startHour = 9; // 9 AM
-    const endHour = 18; // 6 PM
-    const slotInterval = 30; // 30 minutes
-
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += slotInterval) {
-        const slotTime = new Date(selectedDate);
-        slotTime.setHours(hour, minute, 0, 0);
-        
-        // Mock availability (in production, this would come from the API)
-        const available = Math.random() > 0.3; // 70% availability
-        
-        // Don't show past time slots for today
-        if (isToday(selectedDate) && slotTime < new Date()) {
-          continue;
-        }
-
-        slots.push({
-          time: slotTime,
-          available
-        });
-      }
-    }
-
-    return slots;
+  // Refresh time slots (can be called externally)
+  const refreshTimeSlots = () => {
+    loadTimeSlots();
   };
 
   const getDateLabel = (date: Date) => {

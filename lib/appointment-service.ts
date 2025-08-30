@@ -86,13 +86,18 @@ export async function createAppointment(
     guestName: appointmentData.guestName || null,
     guestEmail: appointmentData.guestEmail || null,
     guestPhone: appointmentData.guestPhone || null,
-    price: appointmentData.price,
+    price: appointmentData.price, // Keep as string for decimal field
     status: appointmentData.status || 'scheduled',
     paymentStatus: appointmentData.paymentStatus || 'pending',
     notes: appointmentData.notes || null,
   };
 
   // Create the appointment
+  if (!db) {
+    throw new Error('Database connection not available');
+  }
+  
+  console.log('Inserting appointment with values:', appointmentValues);
   const [createdAppointment] = await db
     .insert(appointment)
     .values(appointmentValues)

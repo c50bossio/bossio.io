@@ -83,6 +83,8 @@ export default function PublicBookingPage() {
     email: '',
     phone: ''
   });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'conflict' | 'error'>('idle');
 
   useEffect(() => {
     loadShopData();
@@ -135,6 +137,7 @@ export default function PublicBookingPage() {
 
   const handleBookingSubmit = async (guestData: typeof bookingData) => {
     setBookingData(guestData);
+    setBookingStatus('booking');
     
     try {
       const response = await fetch('/api/public/appointments', {
@@ -153,15 +156,42 @@ export default function PublicBookingPage() {
         })
       });
 
-      if (!response.ok) throw new Error('Booking failed');
-      
       const result = await response.json();
+
+      if (response.status === 409) {
+        // Conflict - time slot taken
+        setBookingStatus('conflict');
+        setRefreshTrigger(prev => prev + 1); // Trigger time slot refresh
+        
+        alert(result.message || 'This time slot is no longer available. Please select a different time.');
+        
+        // Go back to time selection step
+        setCurrentStep(3);
+        return;
+      }
+
+      if (!response.ok) {
+        setBookingStatus('error');
+        throw new Error(result.error || 'Booking failed');
+      }
       
-      // Show success state
+      // Success!
+      setBookingStatus('success');
       setCurrentStep(5);
+      
+      // Refresh availability to show the slot is now taken
+      setRefreshTrigger(prev => prev + 1);
+      
     } catch (error) {
       console.error('Booking error:', error);
-      alert('Failed to create booking. Please try again.');
+      setBookingStatus('error');
+      
+      if (error instanceof Error && error.message.includes('conflict')) {
+        alert('This time slot has been taken by another customer. Please select a different time.');
+        setCurrentStep(3); // Go back to time selection
+      } else {
+        alert('Failed to create booking. Please try again.');
+      }
     }
   };
 
@@ -334,6 +364,7 @@ export default function PublicBookingPage() {
               serviceId={selectedService.id}
               serviceDuration={selectedService.duration}
               onSelect={handleDateTimeSelect}
+              refreshTrigger={refreshTrigger}
             />
           </div>
         )}
@@ -373,7 +404,7 @@ export default function PublicBookingPage() {
 
             <GuestBookingForm
               onSubmit={handleBookingSubmit}
-              loading={false}
+              loading={bookingStatus === 'booking'}
             />
           </div>
         )}
