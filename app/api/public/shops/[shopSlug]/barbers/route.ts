@@ -27,7 +27,8 @@ export async function GET(
     // Get active staff members for this shop
     const barbers = await db
       .select({
-        id: user.id,
+        id: staff.id,  // Use staff.id instead of user.id for appointment references
+        userId: user.id,
         name: user.name,
         image: user.image,
         role: staff.role,
@@ -40,7 +41,7 @@ export async function GET(
     const publicBarbers = barbers
       .filter(b => b.role === 'barber' || b.role === 'owner')
       .map(b => ({
-        id: b.id,
+        id: b.id,  // This will now be the staff.id
         name: b.name || 'Barber',
         image: b.image,
         bio: `Professional barber`, // You can add a bio field to the user table later

@@ -139,21 +139,25 @@ export default function PublicBookingPage() {
     setBookingData(guestData);
     setBookingStatus('booking');
     
+    const bookingPayload = {
+      shopId: shop?.id,
+      serviceId: selectedService?.id,
+      barberId: selectedBarber?.id,
+      startTime: selectedDateTime?.toISOString(),
+      duration: selectedService?.duration,
+      clientName: guestData.name,
+      clientEmail: guestData.email,
+      clientPhone: guestData.phone,
+      notes: ''
+    };
+    
+    console.log('Booking payload:', bookingPayload);
+    
     try {
       const response = await fetch('/api/public/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shopId: shop?.id,
-          serviceId: selectedService?.id,
-          barberId: selectedBarber?.id,
-          startTime: selectedDateTime?.toISOString(),
-          duration: selectedService?.duration,
-          clientName: guestData.name,
-          clientEmail: guestData.email,
-          clientPhone: guestData.phone,
-          notes: ''
-        })
+        body: JSON.stringify(bookingPayload)
       });
 
       const result = await response.json();
