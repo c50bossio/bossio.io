@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 export async function middleware(request: NextRequest) {
+  // FIRST: Check if request is from Vercel subdomain and redirect to custom domain
+  const hostname = request.headers.get('host') || '';
+  
+  // Check if the request is coming from a Vercel subdomain
+  if (hostname.includes('vercel.app') && !hostname.includes('localhost')) {
+    // Get the request URL path
+    const url = request.nextUrl.clone();
+    
+    // Redirect to the custom domain
+    url.hostname = 'bossio.io';
+    url.protocol = 'https:';
+    
+    return NextResponse.redirect(url, { status: 301 });
+  }
+
+  // THEN: Handle auth logic
   const sessionCookie = getSessionCookie(request);
   const { pathname } = request.nextUrl;
 

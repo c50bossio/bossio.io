@@ -1,7 +1,25 @@
 import { db } from './database';
-import { appointments, clients, services, users, analytics } from './schema';
+import { appointment, service, user, staff } from './shop-schema';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
-import type { NewAppointment, Appointment, NewAnalytics } from './schema';
+
+// Type definitions for guest bookings
+export interface CreateAppointmentData {
+  shopId: string;
+  serviceId: string;
+  barberId?: string | null;
+  startTime: Date;
+  endTime: Date;
+  duration: number;
+  price: string;
+  status?: string;
+  paymentStatus?: string;
+  // Guest booking fields
+  clientId?: string | null;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  notes?: string;
+}
 
 export interface AppointmentWithDetails extends Appointment {
   client: {
@@ -33,20 +51,20 @@ export interface BookingSlot {
 }
 
 /**
- * Create a new appointment with conflict detection
+ * Create a new appointment with conflict detection and guest booking support
  */
 export async function createAppointment(
-  appointmentData: NewAppointment,
+  appointmentData: CreateAppointmentData,
   options: { 
     checkConflicts?: boolean;
     sendConfirmation?: boolean;
   } = {}
-): Promise<{ appointment: Appointment; hasConflicts?: boolean }> {
+): Promise<{ appointment: any; hasConflicts?: boolean }> {
   const { checkConflicts = true, sendConfirmation = true } = options;
 
-  // Check for scheduling conflicts if requested
+  // Check for scheduling conflicts if requested (only if barber is specified)
   let hasConflicts = false;
-  if (checkConflicts) {
+  if (checkConflicts && appointmentData.barberId) {
     const conflicts = await checkAppointmentConflicts(
       appointmentData.barberId,
       appointmentData.startTime,
@@ -56,18 +74,36 @@ export async function createAppointment(
     hasConflicts = conflicts.length > 0;
   }
 
+  // Prepare appointment data with defaults
+  const appointmentValues = {
+    shopId: appointmentData.shopId,
+    serviceId: appointmentData.serviceId,
+    barberId: appointmentData.barberId || null,
+    startTime: appointmentData.startTime,
+    endTime: appointmentData.endTime,
+    duration: appointmentData.duration,
+    clientId: appointmentData.clientId || null,
+    guestName: appointmentData.guestName || null,
+    guestEmail: appointmentData.guestEmail || null,
+    guestPhone: appointmentData.guestPhone || null,
+    price: appointmentData.price,
+    status: appointmentData.status || 'scheduled',
+    paymentStatus: appointmentData.paymentStatus || 'pending',
+    notes: appointmentData.notes || null,
+  };
+
   // Create the appointment
-  const [appointment] = await db
-    .insert(appointments)
-    .values(appointmentData)
+  const [createdAppointment] = await db
+    .insert(appointment)
+    .values(appointmentValues)
     .returning();
 
   // Send confirmation if requested (placeholder for SMS/email integration)
   if (sendConfirmation) {
-    await scheduleAppointmentReminders(appointment);
+    await scheduleAppointmentReminders(createdAppointment);
   }
 
-  return { appointment, hasConflicts };
+  return { appointment: createdAppointment, hasConflicts };
 }
 
 /**
@@ -155,39 +191,26 @@ export async function checkAppointmentConflicts(
   endTime: Date,
   shopId: string,
   excludeAppointmentId?: string
-): Promise<Appointment[]> {
-  let query = db
-    .select()
-    .from(appointments)
-    .where(
-      and(
-        eq(appointments.shopId, shopId),
-        eq(appointments.barberId, barberId),
-        // Check for time overlap
-        sql`(
-          (${appointments.startTime} <= ${startTime} AND ${appointments.endTime} > ${startTime}) OR
-          (${appointments.startTime} < ${endTime} AND ${appointments.endTime} >= ${endTime}) OR
-          (${appointments.startTime} >= ${startTime} AND ${appointments.endTime} <= ${endTime})
-        )`
-      )
-    );
+): Promise<any[]> {
+  let whereConditions = [
+    eq(appointment.shopId, shopId),
+    eq(appointment.barberId, barberId),
+    // Check for time overlap: appointments that conflict with the requested time slot
+    sql`(
+      (${appointment.startTime} < ${endTime} AND ${appointment.endTime} > ${startTime})
+    )`
+  ];
 
   if (excludeAppointmentId) {
-    query = query.where(
-      and(
-        eq(appointments.shopId, shopId),
-        eq(appointments.barberId, barberId),
-        sql`${appointments.id} != ${excludeAppointmentId}`,
-        sql`(
-          (${appointments.startTime} <= ${startTime} AND ${appointments.endTime} > ${startTime}) OR
-          (${appointments.startTime} < ${endTime} AND ${appointments.endTime} >= ${endTime}) OR
-          (${appointments.startTime} >= ${startTime} AND ${appointments.endTime} <= ${endTime})
-        )`
-      )
-    );
+    whereConditions.push(sql`${appointment.id} != ${excludeAppointmentId}`);
   }
 
-  return query.execute();
+  const conflicts = await db
+    .select()
+    .from(appointment)
+    .where(and(...whereConditions));
+
+  return conflicts;
 }
 
 /**

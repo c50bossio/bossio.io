@@ -5,12 +5,14 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
 export const auth = betterAuth({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   trustedOrigins: [
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     "https://bossio.io",
     "https://www.bossio.io",
     "https://bossioio.vercel.app",
-    "https://*.vercel.app"
+    "https://*.vercel.app",
+    "http://localhost:3000"
   ],
   allowedDevOrigins: ["http://localhost:3000"],
   
@@ -33,6 +35,7 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      redirectURI: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/callback/google`,
     },
   },
   

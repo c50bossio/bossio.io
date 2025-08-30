@@ -59,8 +59,23 @@ function SignInContent() {
                         },
                         onError: (ctx) => {
                           setLoading(false);
-                          // Add user-friendly error handling here
                           console.error("Sign-in failed:", ctx.error);
+                          
+                          // Provide user-friendly error messages
+                          if (ctx.error?.message?.includes('redirect_uri_mismatch')) {
+                            toast.error("Google OAuth configuration error. Please contact support.", {
+                              duration: 8000,
+                            });
+                          } else if (ctx.error?.message) {
+                            toast.error(`Sign-in failed: ${ctx.error.message}`, {
+                              duration: 5000,
+                            });
+                          } else {
+                            toast.error("Sign-in failed. This may be a configuration issue during development.", {
+                              description: "The Google OAuth app needs localhost:3000 added as an authorized redirect URI",
+                              duration: 8000,
+                            });
+                          }
                         },
                       },
                     );

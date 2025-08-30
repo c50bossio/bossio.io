@@ -14,14 +14,18 @@ import {
   Calendar,
   Users,
   DollarSign,
-  Share2
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface Shop {
   shop: {
     id: string;
     name: string;
+    slug?: string;
     description: string;
     phone: string;
     email: string;
@@ -38,6 +42,7 @@ interface Shop {
 export function ShopHeader() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch('/api/shops')
@@ -85,6 +90,22 @@ export function ShopHeader() {
 
   const primaryShop = shops[0];
 
+  const handleShare = () => {
+    // Generate the booking URL using the shop slug
+    const bookingUrl = `https://bossio.io/book/${primaryShop.shop.slug || primaryShop.shop.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(bookingUrl).then(() => {
+      setCopied(true);
+      toast.success('Booking link copied to clipboard!');
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast.error('Failed to copy link');
+    });
+  };
+
   return (
     <Card className="mb-6 bg-gradient-to-r from-primary/5 to-card">
       <CardHeader>
@@ -131,9 +152,22 @@ export function ShopHeader() {
           </div>
           
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleShare}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Share Link
+                </>
+              )}
             </Button>
             <Link href="/dashboard/settings">
               <Button variant="outline" size="sm">

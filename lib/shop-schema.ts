@@ -59,7 +59,7 @@ export const service = pgTable("service", {
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
 
-// Staff members table
+// Staff members table  
 export const staff = pgTable("staff", {
   id: text("id").primaryKey().default("gen_random_uuid()"),
   shopId: text("shop_id").notNull().references(() => shop.id),
@@ -67,6 +67,40 @@ export const staff = pgTable("staff", {
   
   role: text("role").default("barber"), // 'owner', 'manager', 'barber'
   isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+// Appointments table - supports both registered users and guests
+export const appointment = pgTable("appointment", {
+  id: text("id").primaryKey().default("gen_random_uuid()"),
+  shopId: text("shop_id").notNull().references(() => shop.id),
+  serviceId: text("service_id").notNull().references(() => service.id),
+  barberId: text("barber_id").references(() => staff.id), // nullable for "any available"
+  
+  // Scheduling
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  duration: integer("duration").notNull(), // minutes
+  
+  // Client information (either registered user OR guest details)
+  clientId: text("client_id").references(() => user.id), // nullable for guests
+  guestName: text("guest_name"),
+  guestEmail: text("guest_email"), 
+  guestPhone: text("guest_phone"),
+  
+  // Booking details
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").default("scheduled").notNull(), // 'scheduled', 'confirmed', 'completed', 'cancelled', 'no_show'
+  paymentStatus: text("payment_status").default("pending").notNull(), // 'pending', 'paid', 'failed', 'refunded'
+  paymentMethod: text("payment_method"), // 'cash', 'card', 'online'
+  
+  notes: text("notes"),
+  
+  // Reminder tracking
+  reminderSent: timestamp("reminder_sent"), // 24-hour reminder timestamp
+  confirmationSent: timestamp("confirmation_sent"), // 2-hour reminder timestamp
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
