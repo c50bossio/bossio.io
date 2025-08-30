@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 config({ path: '.env.local' });
 
 export default defineConfig({
-  schema: './lib/better-auth-schema.ts',
+  schema: ['./lib/better-auth-schema.ts', './lib/shop-schema.ts'],
   out: './migrations',
   dialect: 'postgresql',
   dbCredentials: {
