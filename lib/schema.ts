@@ -12,7 +12,7 @@ export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: timestamp('email_verified'),
-  name: varchar('name', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }),
   image: text('image'),
   role: userRoleEnum('role').default('barber').notNull(),
   
