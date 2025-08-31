@@ -1,8 +1,10 @@
 import { generateBusinessCoachResponse, BUSINESS_PROMPTS } from "@/lib/ai-providers";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { withRateLimit } from "@/lib/with-rate-limit";
+import { NextRequest } from "next/server";
 
-export async function POST(req: Request) {
+async function postHandler(req: NextRequest) {
   try {
     const { messages } = await req.json();
 
@@ -66,3 +68,6 @@ export async function POST(req: Request) {
     return result.toDataStreamResponse();
   }
 }
+
+// Apply rate limiting to chat endpoint (default rate limit since it's AI-powered)
+export const POST = withRateLimit(postHandler, { type: 'default' });

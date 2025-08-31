@@ -1,7 +1,8 @@
 import { getAIProviderStats } from "@/lib/ai-providers";
 import { NextRequest, NextResponse } from "next/server";
+import { withRateLimit } from "@/lib/with-rate-limit";
 
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const stats = await getAIProviderStats();
     
@@ -44,3 +45,6 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
+// Apply rate limiting to AI stats endpoint (analytics rate limit - 30/min)
+export const GET = withRateLimit(getHandler, { type: 'analytics' });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
-import { appointment, staff, service } from '@/lib/shop-schema';
+import { appointments, staff, service } from '@/lib/shop-schema';
 import { eq, and, gte, lte, or, ne, isNull } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const shopId = searchParams.get('shopId');
     const barberId = searchParams.get('barberId');
     const serviceId = searchParams.get('serviceId');
-    const excludeAppointmentId = searchParams.get('excludeId'); // For editing existing appointments
+    const excludeAppointmentId = searchParams.get('excludeId'); // For editing existing appointmentss
     
     if (!date || !shopId) {
       return NextResponse.json(
@@ -39,43 +39,43 @@ export async function GET(request: NextRequest) {
 
     // Build query conditions
     const conditions = [
-      eq(appointment.shopId, shopId),
-      gte(appointment.startTime, startOfDay),
-      lte(appointment.startTime, endOfDay),
-      ne(appointment.status, 'cancelled'), // Don't count cancelled appointments
-      isNull(appointment.deletedAt), // Don't count soft-deleted appointments
+      eq(appointments.shopId, shopId),
+      gte(appointments.startTime, startOfDay),
+      lte(appointments.startTime, endOfDay),
+      ne(appointments.status, 'cancelled'), // Don't count cancelled appointmentss
+      isNull(appointments.deletedAt), // Don't count soft-deleted appointmentss
     ];
 
     // If checking for a specific barber
     if (barberId && barberId !== 'any') {
       conditions.push(
         or(
-          eq(appointment.barberId, barberId),
-          eq(appointment.barberId, null) // Include unassigned appointments
+          eq(appointments.barberId, barberId),
+          eq(appointments.barberId, null) // Include unassigned appointmentss
         )
       );
     }
 
-    // Exclude a specific appointment (for editing)
+    // Exclude a specific appointments (for editing)
     if (excludeAppointmentId) {
-      conditions.push(ne(appointment.id, excludeAppointmentId));
+      conditions.push(ne(appointments.id, excludeAppointmentId));
     }
 
-    // Fetch all appointments for the day
+    // Fetch all appointmentss for the day
     const existingAppointments = await db
       .select({
-        id: appointment.id,
-        startTime: appointment.startTime,
-        endTime: appointment.endTime,
-        barberId: appointment.barberId,
-        status: appointment.status,
+        id: appointments.id,
+        startTime: appointments.startTime,
+        endTime: appointments.endTime,
+        barberId: appointments.barberId,
+        status: appointments.status,
       })
-      .from(appointment)
+      .from(appointments)
       .where(and(...conditions));
     
     console.log('📊 Query Results:', {
-      appointmentsFound: existingAppointments.length,
-      appointments: existingAppointments.map(apt => ({
+      appointmentssFound: existingAppointments.length,
+      appointmentss: existingAppointments.map(apt => ({
         id: apt.id.substring(0, 8) + '...',
         startTime: new Date(apt.startTime).toISOString(),
         endTime: new Date(apt.endTime).toISOString(),
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Check for conflicts with existing appointments
+        // Check for conflicts with existing appointmentss
         let isAvailable = true;
         let conflictCount = 0;
         const conflicts = [];
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
           
           // Debug for 6pm slot
           if (hour === 18 && minute === 0) {
-            console.log('  📌 Comparing with appointment:', {
+            console.log('  📌 Comparing with appointments:', {
               aptStart: aptStart.toISOString(),
               aptEnd: aptEnd.toISOString(),
               aptStartTime: aptStart.getTime(),
@@ -158,9 +158,9 @@ export async function GET(request: NextRequest) {
 
           // Check if there's an overlap
           const overlaps = 
-            (slotStart >= aptStart && slotStart < aptEnd) || // Slot starts during appointment
-            (slotEnd > aptStart && slotEnd <= aptEnd) || // Slot ends during appointment
-            (slotStart <= aptStart && slotEnd >= aptEnd); // Slot encompasses appointment
+            (slotStart >= aptStart && slotStart < aptEnd) || // Slot starts during appointments
+            (slotEnd > aptStart && slotEnd <= aptEnd) || // Slot ends during appointments
+            (slotStart <= aptStart && slotEnd >= aptEnd); // Slot encompasses appointments
           
           if (hour === 18 && minute === 0) {
             console.log('    🔍 Overlap check:', {
@@ -257,42 +257,42 @@ export async function POST(request: NextRequest) {
     const slotStart = new Date(startTime);
     const slotEnd = new Date(endTime);
 
-    // Build query to find conflicting appointments
+    // Build query to find conflicting appointmentss
     const conditions = [
-      eq(appointment.shopId, shopId),
-      ne(appointment.status, 'cancelled'),
-      isNull(appointment.deletedAt), // Don't count soft-deleted appointments
+      eq(appointments.shopId, shopId),
+      ne(appointments.status, 'cancelled'),
+      isNull(appointments.deletedAt), // Don't count soft-deleted appointmentss
     ];
 
     // If checking for a specific barber
     if (barberId && barberId !== 'any') {
       conditions.push(
         or(
-          eq(appointment.barberId, barberId),
-          eq(appointment.barberId, null)
+          eq(appointments.barberId, barberId),
+          eq(appointments.barberId, null)
         )
       );
     }
 
-    // Exclude appointment if editing
+    // Exclude appointments if editing
     if (excludeAppointmentId) {
-      conditions.push(ne(appointment.id, excludeAppointmentId));
+      conditions.push(ne(appointments.id, excludeAppointmentId));
     }
 
-    // Find overlapping appointments
+    // Find overlapping appointmentss
     const conflicts = await db
       .select({
-        id: appointment.id,
-        startTime: appointment.startTime,
-        endTime: appointment.endTime,
-        barberId: appointment.barberId,
-        clientName: appointment.guestName,
-        status: appointment.status,
+        id: appointments.id,
+        startTime: appointments.startTime,
+        endTime: appointments.endTime,
+        barberId: appointments.barberId,
+        clientName: appointments.guestName,
+        status: appointments.status,
       })
-      .from(appointment)
+      .from(appointments)
       .where(and(...conditions));
 
-    // Check each appointment for overlap
+    // Check each appointments for overlap
     const overlappingAppointments = conflicts.filter(apt => {
       const aptStart = new Date(apt.startTime);
       const aptEnd = new Date(apt.endTime);

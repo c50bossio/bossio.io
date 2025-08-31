@@ -3,57 +3,259 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar as CalendarIcon, Plus, Clock, Users, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { Calendar as CalendarIcon, Plus, Clock, Users, ChevronLeft, ChevronRight, Phone, Mail, CheckCircle, XCircle, AlertCircle, Loader2, Trash2, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import AppointmentEditModal from "@/components/appointments/AppointmentEditModal";
+import AppointmentCreateModal from "@/components/appointments/AppointmentCreateModal";
+import DeleteConfirmationModal from "@/components/appointments/DeleteConfirmationModal";
 
-const appointments = [
-  {
-    id: 1,
-    title: "Business Consultation",
-    client: "John Smith",
-    time: "09:00 AM",
-    duration: "60 min",
-    status: "Confirmed",
-    type: "Consulting"
-  },
-  {
-    id: 2,
-    title: "Marketing Strategy",
-    client: "Sarah Johnson",
-    time: "11:00 AM",
-    duration: "90 min", 
-    status: "Confirmed",
-    type: "Marketing"
-  },
-  {
-    id: 3,
-    title: "Financial Planning",
-    client: "Michael Brown",
-    time: "02:30 PM",
-    duration: "45 min",
-    status: "Pending",
-    type: "Finance"
-  },
-  {
-    id: 4,
-    title: "Team Workshop",
-    client: "ABC Corp",
-    time: "04:00 PM",
-    duration: "120 min",
-    status: "Confirmed",
-    type: "Training"
-  }
-];
+interface Appointment {
+  id: string;
+  title: string;
+  client: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  time: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  status: string;
+  paymentStatus: string;
+  price: string;
+  type: string;
+  barber: string;
+  barberId?: string;
+  serviceId?: string;
+  notes?: string;
+  isToday: boolean;
+  isPast: boolean;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  duration: number;
+  price: string;
+}
+
+interface Barber {
+  id: string;
+  name: string;
+}
+
+interface AppointmentStats {
+  total: number;
+  confirmed: number;
+  scheduled: number;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+  totalRevenue: number;
+  totalDuration: number;
+}
 
 const statusColors: { [key: string]: string } = {
-  "Confirmed": "bg-green-100 text-green-800",
-  "Pending": "bg-yellow-100 text-yellow-800",
-  "Cancelled": "bg-red-100 text-red-800"
+  "confirmed": "bg-green-100 text-green-800",
+  "scheduled": "bg-blue-100 text-blue-800",
+  "completed": "bg-gray-100 text-gray-800",
+  "cancelled": "bg-red-100 text-red-800",
+  "no_show": "bg-orange-100 text-orange-800",
+  "pending": "bg-yellow-100 text-yellow-800"
+};
+
+const statusIcons: { [key: string]: any } = {
+  "confirmed": CheckCircle,
+  "scheduled": CalendarIcon,
+  "completed": CheckCircle,
+  "cancelled": XCircle,
+  "no_show": AlertCircle,
+  "pending": Clock
 };
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month">("day");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [stats, setStats] = useState<AppointmentStats>({
+    total: 0,
+    confirmed: 0,
+    scheduled: 0,
+    completed: 0,
+    cancelled: 0,
+    noShow: 0,
+    totalRevenue: 0,
+    totalDuration: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [calendarSettings, setCalendarSettings] = useState({
+    showWeekends: true,
+    startTime: '09:00',
+    endTime: '18:00',
+    defaultView: 'day',
+    reminderTime: '24',
+    autoConfirm: false
+  });
+
+  // Fetch services and barbers on mount
+  useEffect(() => {
+    const shopId = '6ac05b41-85e2-4b3e-9985-e5c7ad813684'; // Tomb45 Channelside
+    
+    // Fetch services
+    fetch(`/api/services?shopId=${shopId}`)
+      .then(res => res.json())
+      .then(data => setServices(data.services || []))
+      .catch(err => console.error('Error fetching services:', err));
+    
+    // Fetch barbers
+    fetch(`/api/barbers?shopId=${shopId}`)
+      .then(res => res.json())
+      .then(data => setBarbers(data.barbers || []))
+      .catch(err => console.error('Error fetching barbers:', err));
+  }, []);
+
+  // Fetch appointments for the current date
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      
+      // Calculate date range based on view
+      let startDate = new Date(currentDate);
+      let endDate = new Date(currentDate);
+      
+      if (view === "day") {
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (view === "week") {
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day;
+        startDate = new Date(startDate.setDate(diff));
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        endDate.setHours(23, 59, 59, 999);
+      }
+
+      const params = new URLSearchParams({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+
+      const response = await fetch(`/api/appointments?${params}`);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Please log in to view appointments");
+          return;
+        }
+        throw new Error("Failed to fetch appointments");
+      }
+
+      const data = await response.json();
+      setAppointments(data.appointments || []);
+      setStats(data.stats || {
+        total: 0,
+        confirmed: 0,
+        scheduled: 0,
+        completed: 0,
+        cancelled: 0,
+        noShow: 0,
+        totalRevenue: 0,
+        totalDuration: 0,
+      });
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      toast.error("Failed to load appointments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update appointment status
+  const updateAppointmentStatus = async (appointmentId: string, newStatus: string) => {
+    try {
+      setUpdatingId(appointmentId);
+      
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update appointment");
+      }
+
+      toast.success(`Appointment marked as ${newStatus}`);
+      
+      // Refresh appointments
+      await fetchAppointments();
+    } catch (error) {
+      console.error("Error updating appointment:", error);
+      toast.error("Failed to update appointment status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Delete appointment
+  const deleteAppointment = async () => {
+    if (!deletingAppointment) return;
+
+    try {
+      const response = await fetch(`/api/appointments/${deletingAppointment.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete appointment");
+      }
+
+      toast.success("Appointment deleted successfully");
+      
+      // Remove appointment from UI immediately
+      setAppointments(prev => prev.filter(apt => apt.id !== deletingAppointment.id));
+      
+      // Reset states
+      setDeletingAppointment(null);
+      setIsDeleteModalOpen(false);
+      
+      // Refresh appointments to get updated stats
+      await fetchAppointments();
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      toast.error("Failed to delete appointment");
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [currentDate, view]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
@@ -64,6 +266,15 @@ export default function Calendar() {
     });
   };
 
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+    }
+    return `${mins}m`;
+  };
+
   return (
     <div className="flex flex-col w-full h-full">
       <div className="border-b px-6 py-4">
@@ -72,7 +283,7 @@ export default function Calendar() {
             <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
             <p className="text-muted-foreground">Manage your appointments and schedule</p>
           </div>
-          <Button>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Appointment
           </Button>
@@ -84,17 +295,49 @@ export default function Calendar() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const newDate = new Date(currentDate);
+                  if (view === "day") {
+                    newDate.setDate(newDate.getDate() - 1);
+                  } else if (view === "week") {
+                    newDate.setDate(newDate.getDate() - 7);
+                  } else if (view === "month") {
+                    newDate.setMonth(newDate.getMonth() - 1);
+                  }
+                  setCurrentDate(newDate);
+                }}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <h2 className="text-lg font-semibold min-w-[200px] text-center">
                 {formatDate(currentDate)}
               </h2>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const newDate = new Date(currentDate);
+                  if (view === "day") {
+                    newDate.setDate(newDate.getDate() + 1);
+                  } else if (view === "week") {
+                    newDate.setDate(newDate.getDate() + 7);
+                  } else if (view === "month") {
+                    newDate.setMonth(newDate.getMonth() + 1);
+                  }
+                  setCurrentDate(newDate);
+                }}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setCurrentDate(new Date())}
+            >
               Today
             </Button>
           </div>
@@ -130,47 +373,160 @@ export default function Calendar() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarIcon className="h-5 w-5" />
-                  Today's Schedule
+                  {view === "day" ? "Today's Schedule" : view === "week" ? "This Week's Schedule" : "This Month's Schedule"}
                 </CardTitle>
                 <CardDescription>
                   {appointments.length} appointments scheduled
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {appointments.map((appointment) => (
-                  <div
-                    key={appointment.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold">{appointment.time}</div>
-                        <div className="text-xs text-muted-foreground flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {appointment.duration}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">{appointment.title}</h4>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Users className="h-4 w-4" />
-                          <span>{appointment.client}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant="secondary"
-                        className={statusColors[appointment.status] || "bg-gray-100 text-gray-800"}
-                      >
-                        {appointment.status}
-                      </Badge>
-                      <Badge variant="outline">
-                        {appointment.type}
-                      </Badge>
-                    </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin" />
                   </div>
-                ))}
+                ) : appointments.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No appointments scheduled for {formatDate(currentDate)}
+                  </div>
+                ) : (
+                  appointments.map((appointment) => {
+                    const StatusIcon = statusIcons[appointment.status] || Clock;
+                    const isUpdating = updatingId === appointment.id;
+                    
+                    return (
+                      <div
+                        key={appointment.id}
+                        className="flex flex-col gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          // Don't open edit modal if clicking on action buttons
+                          if ((e.target as HTMLElement).closest('button')) return;
+                          setEditingAppointment(appointment);
+                          setIsEditModalOpen(true);
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="text-center">
+                              <div className="text-lg font-semibold">{appointment.time}</div>
+                              <div className="text-xs text-muted-foreground flex items-center">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {formatDuration(appointment.duration)}
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">{appointment.title}</h4>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Users className="h-4 w-4" />
+                                <span>{appointment.client}</span>
+                              </div>
+                              {appointment.clientPhone && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  <a href={`tel:${appointment.clientPhone}`} className="hover:underline">
+                                    {appointment.clientPhone}
+                                  </a>
+                                </div>
+                              )}
+                              {appointment.clientEmail && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Mail className="h-3 w-3" />
+                                  <a href={`mailto:${appointment.clientEmail}`} className="hover:underline">
+                                    {appointment.clientEmail}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="secondary"
+                                className={statusColors[appointment.status] || "bg-gray-100 text-gray-800"}
+                              >
+                                <StatusIcon className="h-3 w-3 mr-1" />
+                                {appointment.status}
+                              </Badge>
+                              <Badge variant="outline">
+                                {appointment.type}
+                              </Badge>
+                            </div>
+                            <div className="text-lg font-semibold text-green-600">
+                              ${appointment.price}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Status Update Actions - Show for all non-completed/cancelled appointments */}
+                        {appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
+                          <div className="flex gap-2 pt-2 border-t">
+                            {appointment.status !== 'completed' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateAppointmentStatus(appointment.id, 'completed');
+                                }}
+                                disabled={isUpdating}
+                              >
+                                {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+                                Complete
+                              </Button>
+                            )}
+                            {appointment.status !== 'no_show' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateAppointmentStatus(appointment.id, 'no_show');
+                                }}
+                                disabled={isUpdating}
+                              >
+                                {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <AlertCircle className="h-3 w-3 mr-1" />}
+                                No Show
+                              </Button>
+                            )}
+                            {appointment.status !== 'cancelled' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateAppointmentStatus(appointment.id, 'cancelled');
+                                }}
+                                disabled={isUpdating}
+                              >
+                                {isUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+                                Cancel
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingAppointment(appointment);
+                                setIsDeleteModalOpen(true);
+                              }}
+                              disabled={isUpdating}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {appointment.notes && (
+                          <div className="text-sm text-muted-foreground italic pt-2 border-t">
+                            Note: {appointment.notes}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           </div>
@@ -184,23 +540,45 @@ export default function Calendar() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Total Appointments</span>
-                  <span className="font-semibold">4</span>
+                  <span className="font-semibold">{stats.total}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Confirmed</span>
-                  <span className="font-semibold text-green-600">3</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Pending</span>
-                  <span className="font-semibold text-yellow-600">1</span>
-                </div>
+                {stats.confirmed > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Confirmed</span>
+                    <span className="font-semibold text-green-600">{stats.confirmed}</span>
+                  </div>
+                )}
+                {stats.scheduled > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Scheduled</span>
+                    <span className="font-semibold text-blue-600">{stats.scheduled}</span>
+                  </div>
+                )}
+                {stats.completed > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Completed</span>
+                    <span className="font-semibold text-gray-600">{stats.completed}</span>
+                  </div>
+                )}
+                {stats.cancelled > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Cancelled</span>
+                    <span className="font-semibold text-red-600">{stats.cancelled}</span>
+                  </div>
+                )}
+                {stats.noShow > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">No Show</span>
+                    <span className="font-semibold text-orange-600">{stats.noShow}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Total Duration</span>
-                  <span className="font-semibold">5h 15m</span>
+                  <span className="font-semibold">{formatDuration(stats.totalDuration)}</span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <span className="text-sm text-muted-foreground">Expected Revenue</span>
-                  <span className="font-semibold text-green-600">$770</span>
+                  <span className="font-semibold text-green-600">${stats.totalRevenue.toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -210,16 +588,33 @@ export default function Calendar() {
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Schedule Appointment
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    window.location.href = '/dashboard/clients';
+                  }}
+                >
                   <Users className="mr-2 h-4 w-4" />
                   View All Clients
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setIsSettingsModalOpen(true)}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
                   Calendar Settings
                 </Button>
               </CardContent>
@@ -227,6 +622,188 @@ export default function Calendar() {
           </div>
         </div>
       </div>
+      
+      {/* Calendar Settings Modal */}
+      <Dialog open={isSettingsModalOpen} onOpenChange={setIsSettingsModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Calendar Settings</DialogTitle>
+            <DialogDescription>
+              Configure your calendar preferences and display options
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="show-weekends">Show Weekends</Label>
+                <Switch
+                  id="show-weekends"
+                  checked={calendarSettings.showWeekends}
+                  onCheckedChange={(checked) => 
+                    setCalendarSettings(prev => ({ ...prev, showWeekends: checked }))
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="auto-confirm">Auto-confirm Appointments</Label>
+                <Switch
+                  id="auto-confirm"
+                  checked={calendarSettings.autoConfirm}
+                  onCheckedChange={(checked) => 
+                    setCalendarSettings(prev => ({ ...prev, autoConfirm: checked }))
+                  }
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="start-time">Business Hours Start</Label>
+                <Select
+                  value={calendarSettings.startTime}
+                  onValueChange={(value) => 
+                    setCalendarSettings(prev => ({ ...prev, startTime: value }))
+                  }
+                >
+                  <SelectTrigger id="start-time">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="06:00">6:00 AM</SelectItem>
+                    <SelectItem value="07:00">7:00 AM</SelectItem>
+                    <SelectItem value="08:00">8:00 AM</SelectItem>
+                    <SelectItem value="09:00">9:00 AM</SelectItem>
+                    <SelectItem value="10:00">10:00 AM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="end-time">Business Hours End</Label>
+                <Select
+                  value={calendarSettings.endTime}
+                  onValueChange={(value) => 
+                    setCalendarSettings(prev => ({ ...prev, endTime: value }))
+                  }
+                >
+                  <SelectTrigger id="end-time">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="17:00">5:00 PM</SelectItem>
+                    <SelectItem value="18:00">6:00 PM</SelectItem>
+                    <SelectItem value="19:00">7:00 PM</SelectItem>
+                    <SelectItem value="20:00">8:00 PM</SelectItem>
+                    <SelectItem value="21:00">9:00 PM</SelectItem>
+                    <SelectItem value="22:00">10:00 PM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="default-view">Default View</Label>
+                <Select
+                  value={calendarSettings.defaultView}
+                  onValueChange={(value) => 
+                    setCalendarSettings(prev => ({ ...prev, defaultView: value }))
+                  }
+                >
+                  <SelectTrigger id="default-view">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Day View</SelectItem>
+                    <SelectItem value="week">Week View</SelectItem>
+                    <SelectItem value="month">Month View</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="reminder-time">Reminder Time</Label>
+                <Select
+                  value={calendarSettings.reminderTime}
+                  onValueChange={(value) => 
+                    setCalendarSettings(prev => ({ ...prev, reminderTime: value }))
+                  }
+                >
+                  <SelectTrigger id="reminder-time">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 minutes before</SelectItem>
+                    <SelectItem value="30">30 minutes before</SelectItem>
+                    <SelectItem value="60">1 hour before</SelectItem>
+                    <SelectItem value="120">2 hours before</SelectItem>
+                    <SelectItem value="24">24 hours before</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button variant="outline" onClick={() => setIsSettingsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                toast.success("Calendar settings saved");
+                setIsSettingsModalOpen(false);
+              }}>
+                Save Settings
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Appointment Modal */}
+      {editingAppointment && (
+        <AppointmentEditModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingAppointment(null);
+          }}
+          appointment={editingAppointment}
+          services={services}
+          barbers={barbers}
+          onSave={async (updatedAppointment) => {
+            // Update the appointment in the list
+            setAppointments(prev => prev.map(apt => 
+              apt.id === updatedAppointment.id ? { ...apt, ...updatedAppointment } : apt
+            ));
+            toast.success("Appointment updated successfully");
+            // Refresh appointments from server
+            await fetchAppointments();
+          }}
+          isDemo={false}
+        />
+      )}
+      
+      {/* Create Appointment Modal */}
+      <AppointmentCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        services={services}
+        barbers={barbers}
+        onSave={async () => {
+          // Refresh appointments from server
+          await fetchAppointments();
+        }}
+        isDemo={false}
+        defaultDate={currentDate}
+      />
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingAppointment(null);
+        }}
+        onConfirm={deleteAppointment}
+        appointment={deletingAppointment}
+      />
     </div>
   );
 }

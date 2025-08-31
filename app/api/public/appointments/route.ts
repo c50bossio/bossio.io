@@ -5,8 +5,9 @@ import { service, shop, appointment } from '@/lib/shop-schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { sendBookingConfirmation } from '@/lib/email-service';
 import { sendBookingConfirmationSMS } from '@/lib/sms-service';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const body = await request.json();
     const {
@@ -252,3 +253,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorDetails, { status: 500 });
   }
 }
+
+// Apply rate limiting to public appointments endpoint
+// Use public rate limit (15/min) since this is customer-facing
+export const POST = withRateLimit(postHandler, { type: 'public' });

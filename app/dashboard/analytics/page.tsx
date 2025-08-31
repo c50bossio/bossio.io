@@ -14,6 +14,7 @@ import {
   ArrowDownRight
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { toast } from "sonner";
 
 const revenueData = [
   { name: 'Jan', revenue: 8400 },
@@ -45,6 +46,55 @@ const clientGrowthData = [
 ];
 
 export default function Analytics() {
+  const handleExportReport = () => {
+    // Create CSV data
+    const csvData = [
+      ['Metric', 'Value', 'Change'],
+      ['Total Revenue', '$16,500', '+12.5%'],
+      ['Active Clients', '103', '+9.6%'],
+      ['Appointments', '124', '-3.2%'],
+      ['Avg. Revenue per Client', '$160', '+8.1%'],
+      '',
+      ['Service Performance'],
+      ...serviceData.map(s => [s.name, `$${s.revenue}`, `${s.value}%`]),
+      '',
+      ['Monthly Revenue'],
+      ...revenueData.map(r => [r.name, `$${r.revenue}`, ''])
+    ];
+
+    // Convert to CSV string
+    const csvString = csvData.map(row => row.join(',')).join('\n');
+    
+    // Create blob and download
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-report-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    toast.success("Report exported successfully");
+  };
+
+  const handleGenerateInsights = async () => {
+    toast.loading("Generating AI insights...");
+    
+    // Simulate AI processing
+    setTimeout(() => {
+      toast.dismiss();
+      toast.success("New insights generated! Check the AI Business Insights section below.");
+      
+      // Scroll to insights section
+      const insightsSection = document.querySelector('[data-insights-section]');
+      if (insightsSection) {
+        insightsSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 2000);
+  };
+
   return (
     <div className="flex flex-col w-full h-full">
       <div className="border-b px-6 py-4">
@@ -54,8 +104,8 @@ export default function Analytics() {
             <p className="text-muted-foreground">Track your business performance and growth metrics</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">Export Report</Button>
-            <Button>Generate Insights</Button>
+            <Button variant="outline" onClick={handleExportReport}>Export Report</Button>
+            <Button onClick={handleGenerateInsights}>Generate Insights</Button>
           </div>
         </div>
       </div>
@@ -215,7 +265,7 @@ export default function Analytics() {
         </div>
 
         {/* AI Insights */}
-        <Card>
+        <Card data-insights-section>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />

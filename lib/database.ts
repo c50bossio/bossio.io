@@ -1,6 +1,8 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { config } from 'dotenv';
+import * as authSchema from './better-auth-schema';
+import * as shopSchema from './shop-schema';
 
 config({ path: '.env.local' });
 
@@ -14,8 +16,11 @@ if (!databaseUrl && process.env.NODE_ENV === 'production') {
 // Initialize Neon serverless connection with fallback for build
 const sql = databaseUrl ? neon(databaseUrl) : null;
 
-// Create Drizzle database instance or mock for build
-export const db = sql ? drizzle(sql) : null;
+// Combine schemas
+const combinedSchema = { ...authSchema, ...shopSchema };
+
+// Create Drizzle database instance with schema
+export const db = sql ? drizzle(sql, { schema: combinedSchema }) : null;
 
 // Database connection health check
 export async function checkDatabaseConnection(): Promise<boolean> {

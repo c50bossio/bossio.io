@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse the date
-    const selectedDate = new Date(date);
+    // Parse the date - treat as local date
+    const [year, month, day] = date.split('-').map(Number);
+    const selectedDate = new Date(year, month - 1, day); // Month is 0-indexed
     const dayStart = startOfDay(selectedDate);
     const dayEnd = endOfDay(selectedDate);
 
@@ -66,14 +67,15 @@ export async function GET(request: NextRequest) {
     const slotInterval = 30; // 30 minutes
 
     const now = new Date();
+    const isToday = selectedDate.toDateString() === now.toDateString();
 
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += slotInterval) {
         const slotTime = new Date(selectedDate);
         slotTime.setHours(hour, minute, 0, 0);
         
-        // Don't show past time slots
-        if (slotTime < now) {
+        // Only filter out past time slots if it's today
+        if (isToday && slotTime < now) {
           continue;
         }
 
@@ -92,11 +94,7 @@ export async function GET(request: NextRequest) {
           const apptEnd = new Date(appt.endTime);
           
           // Check if the slot overlaps with an existing appointment
-          return (
-            (slotTime < apptEnd && slotEnd > apptStart) ||
-            // Also check if specific barber conflict (for "any barber" bookings)
-            (barberId === null && appt.barberId !== null)
-          );
+          return (slotTime < apptEnd && slotEnd > apptStart);
         });
 
         slots.push({

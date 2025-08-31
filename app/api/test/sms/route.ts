@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendBookingConfirmationSMS, sendAppointmentReminder, SMSService } from '@/lib/sms-service';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const body = await request.json();
     const { type, phoneNumber, testData } = body;
@@ -93,8 +94,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint for SMS system status and testing guide
-export async function GET() {
+// Apply rate limiting to POST endpoint (2 requests per minute for testing)
+export const POST = withRateLimit(postHandler, { type: 'testing' });
+
+// GET endpoint for SMS system status and testing guide (also rate limited but more lenient)
+async function getHandler() {
   return NextResponse.json({
     success: true,
     message: 'SMS Testing System',
@@ -128,3 +132,6 @@ export async function GET() {
     timestamp: new Date().toISOString()
   });
 }
+
+// Apply rate limiting to GET endpoint (default rate limit)
+export const GET = withRateLimit(getHandler, { type: 'default' });

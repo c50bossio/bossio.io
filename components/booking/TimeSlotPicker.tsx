@@ -58,7 +58,14 @@ export default function TimeSlotPicker({
       
       const data = await response.json();
       console.log('Loaded time slots:', data.slots?.length || 0, 'slots for', format(selectedDate, 'yyyy-MM-dd'));
-      setTimeSlots(data.slots || []);
+      
+      // Convert time strings to Date objects
+      const slotsWithDates = (data.slots || []).map((slot: any) => ({
+        ...slot,
+        time: new Date(slot.time)
+      }));
+      
+      setTimeSlots(slotsWithDates);
     } catch (error) {
       console.error('Error loading time slots:', error);
       // Don't fallback to mock data - show empty state instead

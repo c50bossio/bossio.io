@@ -7,14 +7,15 @@ import { nextCookies } from "better-auth/next-js";
 export const auth = betterAuth({
   baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   trustedOrigins: [
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001",
     "https://bossio.io",
     "https://www.bossio.io",
     "https://bossioio.vercel.app",
     "https://*.vercel.app",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://localhost:3001"
   ],
-  allowedDevOrigins: ["http://localhost:3000"],
+  allowedDevOrigins: ["http://localhost:3000", "http://localhost:3001"],
   
   database: drizzleAdapter(db, {
     provider: "pg",

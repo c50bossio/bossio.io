@@ -5,11 +5,12 @@ import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Scissors, Clock, DollarSign, MapPin, Phone, ArrowLeft, ArrowRight, Calendar, User } from 'lucide-react';
+import { Scissors, Clock, DollarSign, MapPin, Phone, ArrowLeft, ArrowRight, Calendar, User, CreditCard } from 'lucide-react';
 import BarberSelector from '@/components/booking/BarberSelector';
 import ServiceSelector from '@/components/booking/ServiceSelector';
 import TimeSlotPicker from '@/components/booking/TimeSlotPicker';
 import GuestBookingForm from '@/components/booking/GuestBookingForm';
+import PaymentForm from '@/components/booking/PaymentForm';
 
 interface Shop {
   id: string;
@@ -137,6 +138,11 @@ export default function PublicBookingPage() {
 
   const handleBookingSubmit = async (guestData: typeof bookingData) => {
     setBookingData(guestData);
+    // Instead of creating the booking, move to payment step
+    setCurrentStep(5);
+  };
+
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
     setBookingStatus('booking');
     
     const bookingPayload = {
@@ -145,13 +151,15 @@ export default function PublicBookingPage() {
       barberId: selectedBarber?.id,
       startTime: selectedDateTime?.toISOString(),
       duration: selectedService?.duration,
-      clientName: guestData.name,
-      clientEmail: guestData.email,
-      clientPhone: guestData.phone,
-      notes: ''
+      clientName: bookingData.name,
+      clientEmail: bookingData.email,
+      clientPhone: bookingData.phone,
+      notes: '',
+      paymentIntentId: paymentIntentId,
+      paymentStatus: 'paid'
     };
     
-    console.log('Booking payload:', bookingPayload);
+    console.log('Booking payload with payment:', bookingPayload);
     
     try {
       const response = await fetch('/api/public/appointments', {
@@ -181,7 +189,7 @@ export default function PublicBookingPage() {
       
       // Success!
       setBookingStatus('success');
-      setCurrentStep(5);
+      setCurrentStep(6);
       
       // Refresh availability to show the slot is now taken
       setRefreshTrigger(prev => prev + 1);
@@ -250,7 +258,7 @@ export default function PublicBookingPage() {
         </div>
       </div>
 
-      {/* Progress Bar - 4 Steps */}
+      {/* Progress Bar - 5 Steps */}
       <div className="bg-muted/30 border-b">
         <div className="container max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -279,7 +287,14 @@ export default function PublicBookingPage() {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                 4
               </div>
-              <span className="hidden sm:inline">Confirm</span>
+              <span className="hidden sm:inline">Details</span>
+            </div>
+            <div className={`flex-1 h-0.5 mx-2 ${currentStep >= 5 ? 'bg-primary' : 'bg-muted'}`} />
+            <div className={`flex items-center gap-2 ${currentStep >= 5 ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 5 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                5
+              </div>
+              <span className="hidden sm:inline">Payment</span>
             </div>
           </div>
         </div>
@@ -413,8 +428,26 @@ export default function PublicBookingPage() {
           </div>
         )}
 
-        {/* Step 5: Success (only shown after successful booking) */}
-        {currentStep === 5 && (
+        {/* Step 5: Payment */}
+        {currentStep === 5 && selectedService && selectedDateTime && selectedBarber !== undefined && bookingData.name && (
+          <PaymentForm
+            amount={Math.round(parseFloat(selectedService.price) * 100)} // Convert to cents
+            appointmentDetails={{
+              shopId: shop.id,
+              serviceId: selectedService.id,
+              barberId: selectedBarber?.id || null,
+              startTime: selectedDateTime.toISOString(),
+              clientName: bookingData.name,
+              clientEmail: bookingData.email,
+              clientPhone: bookingData.phone,
+            }}
+            onSuccess={handlePaymentSuccess}
+            onBack={() => setCurrentStep(4)}
+          />
+        )}
+
+        {/* Step 6: Success (only shown after successful booking) */}
+        {currentStep === 6 && (
           <Card>
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
